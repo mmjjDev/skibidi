@@ -1,0 +1,38 @@
+{
+  "token": "YOUR_BOT_TOKEN_HERE",
+  "clientId": "YOUR_CLIENT_ID_HERE",
+  "guildId": "YOUR_GUILD_ID_HERE",
+  "pointsPerMessage": 1,
+  "messageCooldownMinutes": 5,
+  "pointsPerVoiceMinutes": 5,
+  "apiFootball": {
+    "baseUrl": "https://api-football-v1.p.rapidapi.com/v3",
+    "apiKey": "YOUR_RAPIDAPI_KEY_HERE"
+  },
+  "supportedCompetitions": [
+    39,
+    140,
+    78,
+    135,
+    61,
+    2,
+    3,
+    848,
+    106,
+    107
+  ],
+  "supportedCompetitionNames": {
+    "39": "Premier League",
+    "140": "LaLiga",
+    "78": "Bundesliga",
+    "135": "Serie A",
+    "61": "Ligue 1",
+    "2": "Champions League",
+    "3": "UEFA Europa League",
+    "848": "UEFA Conference League",
+    "106": "Ekstraklasa",
+    "107": "Pierwsza Liga"
+  },
+  "embedColor": "#FFD700",
+  "botPresence": "⚽ Zakłady piłkarskie"
+}
