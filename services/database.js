@@ -201,9 +201,10 @@ export function trackVoiceJoin(userId, channelId) {
 /**
  * Track user leaving voice channel and award points
  * @param {string} userId - Discord user ID
+ * @param {object} discordUser - Discord user object for DM notifications
  * @returns {number} Points awarded
  */
-export function trackVoiceLeave(userId) {
+export function trackVoiceLeave(userId, discordUser = null) {
   const activity = db.prepare('SELECT * FROM voice_activity WHERE user_id = ?').get(userId);
   
   if (!activity) return 0;
@@ -213,7 +214,40 @@ export function trackVoiceLeave(userId) {
   const pointsToAward = Math.floor(minutesInVoice / 5);
   
   if (pointsToAward > 0) {
+    const user = getUser(userId);
+    const oldTotalPoints = user.total_points;
+    
     addPoints(userId, pointsToAward);
+    
+    // Check for rank promotion if discordUser provided
+    if (discordUser) {
+      import('../ranks/rankCalculator.js').then(({ checkPromotion }) => {
+        import('discord.js').then(({ EmbedBuilder }) => {
+          const updatedUser = getUser(userId);
+          const promotion = checkPromotion(oldTotalPoints, updatedUser.total_points);
+          
+          if (promotion) {
+            updateRank(userId, promotion.name);
+            
+            // Send DM notification
+            const embed = new EmbedBuilder()
+              .setColor(promotion.color)
+              .setTitle(`${promotion.emoji} Awans na nową rangę!`)
+              .setDescription(`Gratulacje! Właśnie awansowałeś na rangę **${promotion.name}**!`)
+              .addFields(
+                { name: 'Nowa ranga', value: `${promotion.emoji} ${promotion.name}`, inline: true },
+                { name: 'Twoje punkty', value: `${updatedUser.total_points} punktów`, inline: true }
+              )
+              .setTimestamp()
+              .setFooter({ text: 'Gratulacje awansu!' });
+            
+            discordUser.send({ embeds: [embed] }).catch(error => {
+              console.error(`Failed to send promotion DM to ${userId}:`, error.message);
+            });
+          }
+        });
+      });
+    }
   }
   
   db.prepare('DELETE FROM voice_activity WHERE user_id = ?').run(userId);

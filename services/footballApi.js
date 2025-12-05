@@ -208,7 +208,7 @@ function getMockFixtures() {
       },
       league: {
         id: config.supportedCompetitions[i % config.supportedCompetitions.length],
-        name: config.supportedCompetitionNames[config.supportedCompetitions[i % config.supportedCompetitions.length]],
+        name: config.supportedCompetitionNames[config.supportedCompetitions[i % config.supportedCompetitions.length]] || 'Liga Piłkarska',
         country: 'Various',
         logo: '🏆'
       },

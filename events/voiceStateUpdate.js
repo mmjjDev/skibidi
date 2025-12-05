@@ -1,6 +1,5 @@
 import { Events } from 'discord.js';
 import { trackVoiceJoin, trackVoiceLeave } from '../services/database.js';
-import { awardVoicePoints } from '../services/pointsService.js';
 
 export default {
   name: Events.VoiceStateUpdate,
@@ -16,23 +15,19 @@ export default {
       
       // User left a voice channel
       if (oldState.channelId && !newState.channelId) {
-        const pointsAwarded = trackVoiceLeave(userId);
+        const pointsAwarded = trackVoiceLeave(userId, oldState.member.user);
         
         if (pointsAwarded > 0) {
           console.log(`✅ ${oldState.member.user.tag} otrzymał ${pointsAwarded} punktów za aktywność głosową`);
-          
-          // Check for rank promotion
-          await awardVoicePoints(userId, pointsAwarded * 5, newState.member.user);
         }
       }
       
       // User switched voice channels
       if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-        const pointsAwarded = trackVoiceLeave(userId);
+        const pointsAwarded = trackVoiceLeave(userId, oldState.member.user);
         
         if (pointsAwarded > 0) {
           console.log(`✅ ${oldState.member.user.tag} otrzymał ${pointsAwarded} punktów za aktywność głosową`);
-          await awardVoicePoints(userId, pointsAwarded * 5, newState.member.user);
         }
         
         trackVoiceJoin(userId, newState.channelId);
