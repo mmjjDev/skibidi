@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { getUpcomingFixtures, getFixtureOdds } from '../services/footballApi.js';
 import { formatDate, formatOdds } from '../utils/formatters.js';
-import config from '../config.json' assert { type: 'json' };
+import config from '../config.json' with { type: 'json' };
 
 export default {
   data: new SlashCommandBuilder()

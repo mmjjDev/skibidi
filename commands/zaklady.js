@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { getActiveBets } from '../services/bettingService.js';
 import { formatPoints, formatOdds, formatDate } from '../utils/formatters.js';
-import config from '../config.json' assert { type: 'json' };
+import config from '../config.json' with { type: 'json' };
 
 export default {
   data: new SlashCommandBuilder()

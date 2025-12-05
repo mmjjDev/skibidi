@@ -1,7 +1,7 @@
 import { getUser, addPoints, updateLastMessagePoints, updateRank } from './database.js';
 import { checkPromotion } from '../ranks/rankCalculator.js';
 import { EmbedBuilder } from 'discord.js';
-import config from '../config.json' assert { type: 'json' };
+import config from '../config.json' with { type: 'json' };
 
 /**
  * Award points for message (with cooldown)

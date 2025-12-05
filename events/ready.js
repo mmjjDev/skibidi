@@ -1,7 +1,7 @@
 import { Events, ActivityType } from 'discord.js';
 import { initializeDatabase } from '../services/database.js';
 import { settlePendingBets } from '../services/bettingService.js';
-import config from '../config.json' assert { type: 'json' };
+import config from '../config.json' with { type: 'json' };
 
 export default {
   name: Events.ClientReady,

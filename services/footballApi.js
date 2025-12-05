@@ -1,5 +1,5 @@
 import axios from 'axios';
-import config from '../config.json' assert { type: 'json' };
+import config from '../config.json' with { type: 'json' };
 
 const API_BASE_URL = 'https://api-football-v1.p.rapidapi.com/v3';
 

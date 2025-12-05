@@ -130,6 +130,19 @@ Postaw zakład na mecz (alternatywna metoda do przycisków).
 ### `/zakłady`
 Wyświetla twoje aktywne zakłady i ich status.
 
+### `/statystyki`
+Wyświetla szczegółowe statystyki twoich zakładów:
+- Łączna liczba zakładów
+- Wygrane vs przegrane
+- Skuteczność (win rate)
+- Bilans zysków/strat
+
+### `/ranking`
+Wyświetla TOP 10 graczy według łącznej sumy zdobytych punktów.
+
+### `/pomoc`
+Wyświetla listę wszystkich dostępnych komend i informacje o systemie.
+
 ## 📁 Struktura Projektu
 
 ```
