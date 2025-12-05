@@ -15,7 +15,7 @@ export default {
       const user = getUser(userId);
 
       // Get betting statistics
-      const stats = db.prepare(`
+      const stmt = db.prepare(`
         SELECT 
           COUNT(*) as total_bets,
           SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
@@ -25,7 +25,14 @@ export default {
           SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount
         FROM bets 
         WHERE user_id = ?
-      `).get(userId);
+      `);
+      stmt.bind([userId]);
+      let stats = {};
+      
+      if (stmt.step()) {
+        stats = stmt.getAsObject();
+      }
+      stmt.free();
 
       const currentRank = calculateRank(user.total_points);
       

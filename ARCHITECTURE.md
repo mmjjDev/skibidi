@@ -230,7 +230,7 @@ CREATE TABLE voice_activity (
 ## External Dependencies
 
 - **discord.js** (v14.14.1): Discord API wrapper
-- **better-sqlite3** (v9.2.2): SQLite database
+- **sql.js** (v1.10.2): SQLite database (pure JavaScript)
 - **axios** (v1.6.5): HTTP client for API calls
 - **dotenv** (v16.3.1): Environment variable management
 

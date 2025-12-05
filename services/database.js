@@ -1,21 +1,51 @@
-import Database from 'better-sqlite3';
+import initSqlJs from 'sql.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const db = new Database(join(__dirname, '..', 'bot.db'));
+const dbPath = join(__dirname, '..', 'bot.db');
 
-// Enable foreign keys
-db.pragma('foreign_keys = ON');
+// Initialize SQL.js and database
+let SQL;
+let db;
+
+async function initDb() {
+  if (!SQL) {
+    SQL = await initSqlJs();
+  }
+  
+  if (existsSync(dbPath)) {
+    const buffer = readFileSync(dbPath);
+    db = new SQL.Database(buffer);
+  } else {
+    db = new SQL.Database();
+  }
+  
+  // Enable foreign keys
+  db.run('PRAGMA foreign_keys = ON');
+}
+
+// Save database to file
+function saveDb() {
+  if (db) {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    writeFileSync(dbPath, buffer);
+  }
+}
+
+// Initialize on module load
+await initDb();
 
 /**
  * Initialize database tables
  */
 export function initializeDatabase() {
   // Users table
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS users (
       user_id TEXT PRIMARY KEY,
       balance INTEGER DEFAULT 0,
@@ -28,7 +58,7 @@ export function initializeDatabase() {
   `);
 
   // Bets table
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS bets (
       bet_id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
@@ -47,7 +77,7 @@ export function initializeDatabase() {
   `);
 
   // Voice activity tracking
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS voice_activity (
       user_id TEXT PRIMARY KEY,
       channel_id TEXT,
@@ -56,6 +86,7 @@ export function initializeDatabase() {
     )
   `);
 
+  saveDb();
   console.log('✅ Database initialized successfully');
 }
 
@@ -65,11 +96,25 @@ export function initializeDatabase() {
  * @returns {object} User object
  */
 export function getUser(userId) {
-  let user = db.prepare('SELECT * FROM users WHERE user_id = ?').get(userId);
+  const stmt = db.prepare('SELECT * FROM users WHERE user_id = ?');
+  stmt.bind([userId]);
+  let user = null;
+  
+  if (stmt.step()) {
+    user = stmt.getAsObject();
+  }
+  stmt.free();
   
   if (!user) {
-    db.prepare('INSERT INTO users (user_id) VALUES (?)').run(userId);
-    user = db.prepare('SELECT * FROM users WHERE user_id = ?').get(userId);
+    db.run('INSERT INTO users (user_id) VALUES (?)', [userId]);
+    saveDb();
+    
+    const stmt2 = db.prepare('SELECT * FROM users WHERE user_id = ?');
+    stmt2.bind([userId]);
+    if (stmt2.step()) {
+      user = stmt2.getAsObject();
+    }
+    stmt2.free();
   }
   
   return user;
@@ -81,7 +126,8 @@ export function getUser(userId) {
  * @param {number} amount - Amount to add (can be negative)
  */
 export function updateBalance(userId, amount) {
-  db.prepare('UPDATE users SET balance = balance + ? WHERE user_id = ?').run(amount, userId);
+  db.run('UPDATE users SET balance = balance + ? WHERE user_id = ?', [amount, userId]);
+  saveDb();
 }
 
 /**
@@ -91,12 +137,13 @@ export function updateBalance(userId, amount) {
  * @returns {object} Updated user
  */
 export function addPoints(userId, points) {
-  db.prepare(`
+  db.run(`
     UPDATE users 
     SET balance = balance + ?, 
         total_points = total_points + ? 
     WHERE user_id = ?
-  `).run(points, points, userId);
+  `, [points, points, userId]);
+  saveDb();
   
   return getUser(userId);
 }
@@ -107,7 +154,8 @@ export function addPoints(userId, points) {
  * @param {string} rankName - New rank name
  */
 export function updateRank(userId, rankName) {
-  db.prepare('UPDATE users SET current_rank = ? WHERE user_id = ?').run(rankName, userId);
+  db.run('UPDATE users SET current_rank = ? WHERE user_id = ?', [rankName, userId]);
+  saveDb();
 }
 
 /**
@@ -116,7 +164,8 @@ export function updateRank(userId, rankName) {
  * @param {number} timestamp - Unix timestamp
  */
 export function updateLastMessagePoints(userId, timestamp) {
-  db.prepare('UPDATE users SET last_message_points = ? WHERE user_id = ?').run(timestamp, userId);
+  db.run('UPDATE users SET last_message_points = ? WHERE user_id = ?', [timestamp, userId]);
+  saveDb();
 }
 
 /**
@@ -125,10 +174,10 @@ export function updateLastMessagePoints(userId, timestamp) {
  * @returns {object} Created bet
  */
 export function createBet(betData) {
-  const result = db.prepare(`
+  db.run(`
     INSERT INTO bets (user_id, match_id, fixture_id, bet_type, amount, odds, potential_win)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `, [
     betData.userId,
     betData.matchId,
     betData.fixtureId,
@@ -136,9 +185,17 @@ export function createBet(betData) {
     betData.amount,
     betData.odds,
     betData.potentialWin
-  );
+  ]);
+  saveDb();
   
-  return db.prepare('SELECT * FROM bets WHERE bet_id = ?').get(result.lastInsertRowid);
+  const stmt = db.prepare('SELECT * FROM bets WHERE bet_id = (SELECT MAX(bet_id) FROM bets)');
+  let bet = null;
+  if (stmt.step()) {
+    bet = stmt.getAsObject();
+  }
+  stmt.free();
+  
+  return bet;
 }
 
 /**
@@ -147,7 +204,16 @@ export function createBet(betData) {
  * @returns {array} Array of bets
  */
 export function getUserActiveBets(userId) {
-  return db.prepare('SELECT * FROM bets WHERE user_id = ? AND status = ?').all(userId, 'pending');
+  const stmt = db.prepare('SELECT * FROM bets WHERE user_id = ? AND status = ?');
+  stmt.bind([userId, 'pending']);
+  const bets = [];
+  
+  while (stmt.step()) {
+    bets.push(stmt.getAsObject());
+  }
+  stmt.free();
+  
+  return bets;
 }
 
 /**
@@ -155,7 +221,16 @@ export function getUserActiveBets(userId) {
  * @returns {array} Array of pending bets
  */
 export function getAllPendingBets() {
-  return db.prepare('SELECT * FROM bets WHERE status = ?').all('pending');
+  const stmt = db.prepare('SELECT * FROM bets WHERE status = ?');
+  stmt.bind(['pending']);
+  const bets = [];
+  
+  while (stmt.step()) {
+    bets.push(stmt.getAsObject());
+  }
+  stmt.free();
+  
+  return bets;
 }
 
 /**
@@ -164,7 +239,14 @@ export function getAllPendingBets() {
  * @param {string} result - Result ('win', 'loss', 'void')
  */
 export function settleBet(betId, result) {
-  const bet = db.prepare('SELECT * FROM bets WHERE bet_id = ?').get(betId);
+  const stmt = db.prepare('SELECT * FROM bets WHERE bet_id = ?');
+  stmt.bind([betId]);
+  let bet = null;
+  
+  if (stmt.step()) {
+    bet = stmt.getAsObject();
+  }
+  stmt.free();
   
   if (!bet) return;
   
@@ -173,16 +255,17 @@ export function settleBet(betId, result) {
   if (result === 'win') {
     const winAmount = Math.floor(bet.potential_win);
     updateBalance(bet.user_id, winAmount);
-    db.prepare('UPDATE bets SET status = ?, result = ?, settled_at = ? WHERE bet_id = ?')
-      .run('settled', 'win', now, betId);
+    db.run('UPDATE bets SET status = ?, result = ?, settled_at = ? WHERE bet_id = ?',
+      ['settled', 'win', now, betId]);
   } else if (result === 'loss') {
-    db.prepare('UPDATE bets SET status = ?, result = ?, settled_at = ? WHERE bet_id = ?')
-      .run('settled', 'loss', now, betId);
+    db.run('UPDATE bets SET status = ?, result = ?, settled_at = ? WHERE bet_id = ?',
+      ['settled', 'loss', now, betId]);
   } else if (result === 'void') {
     updateBalance(bet.user_id, bet.amount);
-    db.prepare('UPDATE bets SET status = ?, result = ?, settled_at = ? WHERE bet_id = ?')
-      .run('settled', 'void', now, betId);
+    db.run('UPDATE bets SET status = ?, result = ?, settled_at = ? WHERE bet_id = ?',
+      ['settled', 'void', now, betId]);
   }
+  saveDb();
 }
 
 /**
@@ -192,10 +275,11 @@ export function settleBet(betId, result) {
  */
 export function trackVoiceJoin(userId, channelId) {
   const now = Math.floor(Date.now() / 1000);
-  db.prepare(`
+  db.run(`
     INSERT OR REPLACE INTO voice_activity (user_id, channel_id, join_time)
     VALUES (?, ?, ?)
-  `).run(userId, channelId, now);
+  `, [userId, channelId, now]);
+  saveDb();
 }
 
 /**
@@ -205,7 +289,14 @@ export function trackVoiceJoin(userId, channelId) {
  * @returns {number} Points awarded
  */
 export function trackVoiceLeave(userId, discordUser = null) {
-  const activity = db.prepare('SELECT * FROM voice_activity WHERE user_id = ?').get(userId);
+  const stmt = db.prepare('SELECT * FROM voice_activity WHERE user_id = ?');
+  stmt.bind([userId]);
+  let activity = null;
+  
+  if (stmt.step()) {
+    activity = stmt.getAsObject();
+  }
+  stmt.free();
   
   if (!activity) return 0;
   
@@ -250,7 +341,8 @@ export function trackVoiceLeave(userId, discordUser = null) {
     }
   }
   
-  db.prepare('DELETE FROM voice_activity WHERE user_id = ?').run(userId);
+  db.run('DELETE FROM voice_activity WHERE user_id = ?', [userId]);
+  saveDb();
   
   return pointsToAward;
 }
@@ -260,7 +352,15 @@ export function trackVoiceLeave(userId, discordUser = null) {
  * @returns {array} Array of voice activity records
  */
 export function getAllVoiceActivity() {
-  return db.prepare('SELECT * FROM voice_activity').all();
+  const stmt = db.prepare('SELECT * FROM voice_activity');
+  const activities = [];
+  
+  while (stmt.step()) {
+    activities.push(stmt.getAsObject());
+  }
+  stmt.free();
+  
+  return activities;
 }
 
 export default db;

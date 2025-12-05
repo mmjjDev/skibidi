@@ -11,12 +11,18 @@ export default {
   async execute(interaction) {
     try {
       // Get top 10 users by total points
-      const topUsers = db.prepare(`
+      const stmt = db.prepare(`
         SELECT user_id, balance, total_points, current_rank 
         FROM users 
         ORDER BY total_points DESC 
         LIMIT 10
-      `).all();
+      `);
+      const topUsers = [];
+      
+      while (stmt.step()) {
+        topUsers.push(stmt.getAsObject());
+      }
+      stmt.free();
 
       if (!topUsers || topUsers.length === 0) {
         await interaction.reply({

@@ -189,7 +189,7 @@ Join voice channel → Track join time
 ```json
 {
   "discord.js": "^14.14.1",    // Discord API
-  "better-sqlite3": "^9.2.2",  // SQLite database
+  "sql.js": "^1.10.2",         // SQLite database (pure JavaScript)
   "axios": "^1.6.5",           // HTTP client
   "dotenv": "^16.3.1"          // Environment variables
 }

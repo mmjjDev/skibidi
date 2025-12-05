@@ -8,7 +8,7 @@ A fully functional Discord.js v14+ betting bot with a comprehensive points syste
 ### Architecture
 - **Language**: JavaScript ES Modules
 - **Discord Library**: Discord.js v14.14.1
-- **Database**: SQLite (better-sqlite3)
+- **Database**: SQLite (sql.js)
 - **Structure**: Modular with separation of concerns
 
 ### Core Features Implemented
