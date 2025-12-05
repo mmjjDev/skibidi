@@ -3,3 +3,12 @@ node_modules/
 *.db
 *.log
 .DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cache/
+dist/
+build/
+coverage/
